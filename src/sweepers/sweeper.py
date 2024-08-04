@@ -41,8 +41,11 @@ def main():
     '''
     Initialize TensorFlow datasets:
     '''
+    '''
+    interpolation bilinear , keep_aspect_ration = false, target_size = 75, 75
+    '''
     train_ds, val_ds, test_ds = load_datasets(
-        color_mode='rgb', target_size=(75, 75), interpolation='bilinear', keep_aspect_ratio=False,
+        color_mode='rgb', target_size=(75, 75), interpolation='bilinear' , keep_aspect_ratio=False,
         train_set_size=0.6, val_set_size=0.2, test_set_size=0.2, seed=SEED, num_partitions=6, batch_size=BATCH_SIZE,
         num_images=None, oversample_train_set=True, oversample_val_set=True, is_multi=False
     )
@@ -153,7 +156,7 @@ if __name__ == '__main__':
     which will remain constant between runs below. The hyperparameters which will be varied should be defined in the
     sweep configuration.
     """
-    NUM_TRIALS = 100
+    NUM_TRIALS = 10
     BATCH_SIZE = 128
     NUM_CLASSES = 2
     SEED = 42

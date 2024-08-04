@@ -408,6 +408,7 @@ if __name__ == '__main__':
     # Note: Change num_partitions to 1 to load in only Train_0, change to 2 to load in Train_0 and Train_1, etc.
     train_ds, val_ds, test_ds = load_datasets(
         color_mode='rgb', target_size=(75, 75), interpolation='bilinear', keep_aspect_ratio=False, num_partitions=6,
-        batch_size=32, num_images=500, train_set_size=0.6, val_set_size=0.2, test_set_size=0.2, seed=42, is_multi=True,
+        batch_size=128, num_images=3000, train_set_size=0.6, val_set_size=0.2, test_set_size=0.2, seed=42, is_multi=False,
         oversample_train_set=False, oversample_val_set=False
     )
+
