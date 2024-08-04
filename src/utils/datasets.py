@@ -10,6 +10,8 @@ from tensorflow.data import Dataset
 import pandas as pd
 from loguru import logger
 import enum
+from tensorflow.keras.layers import RandomFlip, RandomRotation, RandomZoom, RandomContrast, RandomWidth, RandomHeight
+from tensorflow.keras.models import Sequential
 
 
 class DatasetSplit(enum.Enum):
@@ -67,7 +69,7 @@ def load_and_preprocess_image(*args, **kwargs) -> Tuple[Union[np.ndarray, float]
 
 def load_datasets(
         color_mode: str, target_size: Optional[Tuple[int, int]], interpolation: str, keep_aspect_ratio: bool,
-        num_partitions: int, batch_size: int, oversample_train_set: bool, oversample_val_set: bool,
+        num_partitions: int, batch_size: int, oversample_train_set: bool, oversample_val_set: bool, data_aug_train_set: bool,
         num_images: Optional[int] = None, train_set_size: Optional[float] = 0.6, val_set_size: Optional[float] = 0.2,
         test_set_size: Optional[float] = 0.2, seed: Optional[int] = 42, is_multi: Optional[bool] = False,
         num_images_to_upload: Optional[int] = 6) -> [Dataset, Dataset, Dataset, Dataset]:
@@ -319,6 +321,10 @@ def load_datasets(
     if oversample_val_set:
         logger.debug(f"Oversampling validation dataset.")
         val_ds = get_oversampled_dataset(val_ds, batch_size=batch_size, seed=seed)
+    if data_aug_train_set:
+        logger.debug(f"Data augmentation training dataset.")
+        train_ds = get_augmented_dataset(train_ds, batch_size=batch_size, seed=seed)
+
     '''
     Batch the datasets:
     '''
@@ -403,12 +409,45 @@ def get_oversampled_dataset(data: Dataset, batch_size: int, seed: Optional[int] 
     assert (num_examples == num_negative_labels + num_positive_labels)
     return total_repeat
 
+def get_augmented_dataset(data: Dataset, batch_size: int, seed: Optional[int] = 250) -> Dataset:
+    """
+    Applies data augmentation to the dataset to increase the diversity of the training data.
+
+    Args:
+        data (Dataset): The dataset to augment.
+        batch_size (int): The batch size to use for the augmented dataset.
+        seed (Optional[int]): The random seed used for shuffling.
+
+    Returns:
+        Dataset: The augmented dataset.
+    """
+    logger.debug(f"Applying data augmentation to the dataset. Cardinality of data: {data.cardinality().numpy()}")
+
+    # Define data augmentation layers
+    data_augmentation = tf.keras.Sequential([
+        tf.keras.layers.RandomFlip('horizontal_and_vertical'),
+        tf.keras.layers.RandomRotation(0.2),
+        tf.keras.layers.RandomZoom(0.2),
+        tf.keras.layers.RandomContrast(0.2),
+        # Add more augmentation techniques as needed
+    ])
+
+    def augment(image, label):
+        augmented_image = data_augmentation(image)
+        return augmented_image, label
+
+    augmented_data = data.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+    augmented_data = augmented_data.shuffle(buffer_size=1000, seed=seed)
+    augmented_data = augmented_data.batch(batch_size, drop_remainder=True)
+    augmented_data = augmented_data.prefetch(buffer_size=tf.data.AUTOTUNE)
+
+    return augmented_data
+
 
 if __name__ == '__main__':
     # Note: Change num_partitions to 1 to load in only Train_0, change to 2 to load in Train_0 and Train_1, etc.
     train_ds, val_ds, test_ds = load_datasets(
         color_mode='rgb', target_size=(75, 75), interpolation='bilinear', keep_aspect_ratio=False, num_partitions=6,
         batch_size=128, num_images=3000, train_set_size=0.6, val_set_size=0.2, test_set_size=0.2, seed=42, is_multi=False,
-        oversample_train_set=False, oversample_val_set=False
-    )
+        oversample_train_set=False, oversample_val_set=False, data_aug_train_set=True )
 
